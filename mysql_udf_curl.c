@@ -46,25 +46,23 @@ static int thr_ctx_init(struct thr_ctx *ctx)
     return 0;
 }
 
-static void thr_init(void)
+static void global_init(void)
+{
+    if (pthread_key_create(&thr_ctx_key, (void(*)(void*))&thr_ctx_fini)) abort();
+}
+
+static struct thr_ctx *thr_ctx(void)
 {
     struct thr_ctx *ctx;
+    if (pthread_once(&thr_init_once, global_init)) abort();
+    ctx = pthread_getspecific(thr_ctx_key);
+    if (ctx)
+        return ctx;
     ctx = malloc(sizeof(*ctx));
     if (!ctx) abort(); /* must not happen */
     if (thr_ctx_init(ctx)) abort();
-    if (pthread_key_create(&thr_ctx_key, (void(*)(void*))&thr_ctx_fini)) abort();
     if (pthread_setspecific(thr_ctx_key, ctx)) abort();
-}
-
-static void ensure_thr_init(void)
-{
-    if (pthread_once(&thr_init_once, thr_init)) abort();
-}
-
-static struct thr_ctx *thr_ctx()
-{
-    ensure_thr_init();
-    return (struct thr_ctx *)pthread_getspecific(thr_ctx_key);
+    return ctx;
 }
 
 struct readdata_handler_ctx {
