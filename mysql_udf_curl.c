@@ -252,6 +252,9 @@ char *curl_fetch(UDF_INIT *initid, UDF_ARGS *args, char *result,
     };
     curl_easy_setopt(ctx->curl, CURLOPT_WRITEDATA, &wctx);
     curl_easy_setopt(ctx->curl, CURLOPT_READDATA, &rctx);
+    curl_easy_setopt(ctx->curl, CURLOPT_POSTFIELDS, args->args[2]);
+    curl_easy_setopt(ctx->curl, CURLOPT_POSTFIELDSIZE, args->lengths[2]);
+    curl_easy_setopt(ctx->curl, CURLOPT_INFILESIZE, args->lengths[2]);
     curl_easy_setopt(ctx->curl, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(ctx->curl, CURLOPT_URL, args->args[0]);
 
