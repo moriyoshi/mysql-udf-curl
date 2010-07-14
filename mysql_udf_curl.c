@@ -398,6 +398,172 @@ char *curl_esc(UDF_INIT *initid, UDF_ARGS *args, char *result,
     return result;
 }
 
+/**
+ * @param initid	Points to a structure that the init function should fill.
+ *		This argument is given to all other functions.
+ *		my_bool maybe_null	1 if function can return NULL
+ *				Default value is 1 if any of the arguments
+ *				is declared maybe_null.
+ *		unsigned int decimals	Number of decimals.
+ *				Default value is max decimals in any of the
+ *				arguments.
+ *		unsigned int max_length  Length of string result.
+ *				The default value for integer functions is 21
+ *				The default value for real functions is 13+
+ *				default number of decimals.
+ *				The default value for string functions is
+ *				the longest string argument.
+ *		char *ptr;		A pointer that the function can use.
+ *
+ * @param args		Points to a structure which contains:
+ *		unsigned int arg_count		Number of arguments
+ *		enum Item_result *arg_type	Types for each argument.
+ *					Types are STRING_RESULT, REAL_RESULT
+ *					and INT_RESULT.
+ *		char **args			Pointer to constant arguments.
+ *					Contains 0 for not constant argument.
+ *		unsigned long *lengths;		max string length for each argument
+ *		char *maybe_null		Information of which arguments
+ *					may be NULL
+ *
+ * @param message	Error message that should be passed to the user on fail.
+ *		The message buffer is MYSQL_ERRMSG_SIZE big, but one should
+ *		try to keep the error message less than 80 bytes long!
+ *
+ * This function should return 1 if something goes wrong. In this case
+ * message should contain something usefull!
+ */
+my_bool curl_setopt_init(UDF_INIT *initid, UDF_ARGS *args, char *message)
+{
+    CURL *curl;
+
+    initid->ptr = (void *)thr_ctx();
+
+	if (args->arg_count != 2) {
+		strncpy(message, "curl_setopt requires exactly two arguments",
+			    MYSQL_ERRMSG_SIZE);
+		return 1;
+    }
+
+    args->arg_type[0] = STRING_RESULT;
+    args->maybe_null[0] = 0;
+
+    args->arg_type[1] = STRING_RESULT;
+    args->maybe_null[1] = 0;
+
+	initid->max_length = UINT_MAX;
+	return 0;
+}
+
+/**
+ * Deinit function. This should free all resources allocated by
+ * this function.
+ * @param initid	Return value from xxxx_init
+ */
+void curl_setopt_deinit(UDF_INIT *initid)
+{
+}
+
+static int httpauthstr_to_long(long *result, const char *value)
+{
+    struct options {
+        const char *key;
+        long value;
+    };
+    static const struct options options[] = {
+        { "BASIC", CURLAUTH_BASIC },
+        { "DIGEST", CURLAUTH_DIGEST },
+        { "DIGEST_IE", CURLAUTH_DIGEST_IE },
+        { "GSSNEGOTIATE", CURLAUTH_GSSNEGOTIATE },
+        { "NTLM", CURLAUTH_NTLM },
+        { "ANY", CURLAUTH_ANY },
+        { "ANYSAFE", CURLAUTH_ANYSAFE },
+        { NULL }
+    };
+    const struct options *p;
+    for (p = options; p->key; p++) {
+        if (my_strcasecmp_8bit(&my_charset_latin1, value, p->key) == 0) {
+            *result = p->value;
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/**
+ * URL escape function.
+ * @param initid  Structure filled by xxx_init
+ * @param args    The same structure as to xxx_init. This structure
+ *	              contains values for all parameters.
+ *
+ *                Note that the functions MUST check and convert all
+ *                to the type it wants!  Null values are represented by
+ *                a NULL pointer
+ * @param result  Possible buffer to save result. At least 255 byte long.
+ * @param length  Pointer to length of the above buffer.
+ *                In this the function should save the result length
+ * @param is_null If the result is null, one should store 1 here.
+ * @param error   If something goes fatally wrong one should store 1 here.
+ *
+ * @return This function should return a pointer to the result string.
+ *         Normally this is 'result' but may also be an alloced string.
+ */
+longlong curl_setopt(UDF_INIT *initid, UDF_ARGS *args, char *result,
+		             unsigned long *length, char *is_null, char *error)
+{
+    struct options {
+        const char *key;
+        CURLoption value;
+        enum { STRING, LONG, ENUM } type;
+        int (*extra)(long *, const char *);
+    };
+    static const struct options options[] = {
+        { "USERAGENT", CURLOPT_USERAGENT, STRING },
+        { "PROXY", CURLOPT_PROXY, STRING },
+        { "PROXYUSERPWD", CURLOPT_PROXYUSERPWD, STRING },
+        { "PROXYUSERNAME", CURLOPT_PROXYUSERNAME, STRING },
+        { "INTERFACE", CURLOPT_INTERFACE, STRING },
+        { "USERPWD", CURLOPT_USERPWD, STRING },
+        { "USERNAME", CURLOPT_USERNAME, STRING },
+        { "PASSWORD", CURLOPT_PASSWORD, STRING },
+        { "HTTPAUTH", CURLOPT_HTTPAUTH, ENUM, &httpauthstr_to_long },
+        { NULL }
+    };
+    const struct options *p;
+    struct thr_ctx *ctx = (struct thr_ctx *)initid->ptr;
+    longlong retval = 1;
+
+    for (p = options; p->key; p++) {
+        if (my_strcasecmp_8bit(&my_charset_latin1, args->args[0], p->key) == 0) {
+
+            switch (p->type) {
+            case STRING:
+                retval = !curl_easy_setopt(ctx->curl, p->value, args->args[1]);
+                break;
+            case LONG:
+                {
+                    long value = strtol(args->args[1], NULL, 10);
+                    if (errno == EINVAL || errno == ERANGE)
+                        retval = 0;
+                    else
+                        retval = !curl_easy_setopt(ctx->curl, p->value, value);
+                }
+                break;
+            case ENUM:
+                {
+                    long value;
+                    if (p->extra(&value, args->args[1]))
+                        return 0;
+                    else
+                        retval = !curl_easy_setopt(ctx->curl, p->value, value);
+                }
+                break;
+            }
+        }
+    }
+    return retval;
+}
+
 #ifdef __cplusplus
 }
 #endif
