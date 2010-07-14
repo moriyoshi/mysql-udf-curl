@@ -307,7 +307,6 @@ char *curl_fetch(UDF_INIT *initid, UDF_ARGS *args, char *result,
  */
 my_bool curl_esc_init(UDF_INIT *initid, UDF_ARGS *args, char *message)
 {
-	int i;
     CURL *curl;
 
     initid->ptr = (void *)thr_ctx();
@@ -319,7 +318,7 @@ my_bool curl_esc_init(UDF_INIT *initid, UDF_ARGS *args, char *message)
     }
 
     args->arg_type[0] = STRING_RESULT;
-    args->maybe_null[i] = 0;
+    args->maybe_null[0] = 0;
 
 	initid->max_length = UINT_MAX;
 	return 0;
