@@ -25,8 +25,15 @@ extern "C" {
 static pthread_once_t thr_init_once = PTHREAD_ONCE_INIT;
 static pthread_key_t thr_ctx_key;
 
+enum method {
+    HTTP_METHOD_GET,
+    HTTP_METHOD_POST,
+    HTTP_METHOD_PUT
+};
+
 struct thr_ctx {
     CURL *curl;
+    enum method method; 
 };
 
 static void thr_ctx_fini(struct thr_ctx *ctx)
@@ -192,17 +199,25 @@ my_bool curl_fetch_init(UDF_INIT *initid, UDF_ARGS *args, char *message)
                 strncpy(message, "too few arguments", MYSQL_ERRMSG_SIZE);
                 return 1;
             }
-            curl_easy_setopt(ctx->curl, CURLOPT_POST, 1);
+            ctx->method = HTTP_METHOD_POST;
         } else if (my_strcasecmp_8bit(&my_charset_latin1, method, "put") == 0) {
             if (args->arg_count < 3) {
                 strncpy(message, "too few arguments", MYSQL_ERRMSG_SIZE);
                 return 1;
             }
-            curl_easy_setopt(ctx->curl, CURLOPT_UPLOAD, 1);
-        } else if (my_strcasecmp_8bit(&my_charset_latin1, method, "get") != 0) {
+            ctx->method = HTTP_METHOD_PUT;
+        } else if (my_strcasecmp_8bit(&my_charset_latin1, method, "get") == 0) {
+            if (args->arg_count > 2) {
+                strncpy(message, "too many arguments", MYSQL_ERRMSG_SIZE);
+                return 1;
+            }
+            ctx->method = HTTP_METHOD_GET;
+        } else {
             my_snprintf_8bit(&my_charset_latin1, message, MYSQL_ERRMSG_SIZE, "invalid method name `%s'", method);
             return 1;
         }
+        curl_easy_setopt(ctx->curl, CURLOPT_UPLOAD, ctx->method == HTTP_METHOD_PUT);
+        curl_easy_setopt(ctx->curl, CURLOPT_POST, ctx->method == HTTP_METHOD_POST);
     } 
 
     curl_easy_setopt(ctx->curl, CURLOPT_WRITEFUNCTION, writedata);
@@ -250,11 +265,17 @@ char *curl_fetch(UDF_INIT *initid, UDF_ARGS *args, char *result,
         args->args[2] + args->lengths[2],
         args->args[2]
     };
+
     curl_easy_setopt(ctx->curl, CURLOPT_WRITEDATA, &wctx);
     curl_easy_setopt(ctx->curl, CURLOPT_READDATA, &rctx);
-    curl_easy_setopt(ctx->curl, CURLOPT_POSTFIELDS, args->args[2]);
-    curl_easy_setopt(ctx->curl, CURLOPT_POSTFIELDSIZE, args->lengths[2]);
-    curl_easy_setopt(ctx->curl, CURLOPT_INFILESIZE, args->lengths[2]);
+
+    if (ctx->method == HTTP_METHOD_POST) {
+        curl_easy_setopt(ctx->curl, CURLOPT_POSTFIELDS, args->args[2]);
+        curl_easy_setopt(ctx->curl, CURLOPT_POSTFIELDSIZE, args->lengths[2]);
+    } else {
+        curl_easy_setopt(ctx->curl, CURLOPT_INFILESIZE, args->lengths[2]);
+    }
+
     curl_easy_setopt(ctx->curl, CURLOPT_FOLLOWLOCATION, 1);
     curl_easy_setopt(ctx->curl, CURLOPT_URL, args->args[0]);
 
