@@ -7,7 +7,7 @@
 #include <my_global.h>
 #include <my_sys.h>
 #include <m_ctype.h>
-#include <m_string.h>		// To get strmov()
+#include <m_string.h>        // To get strmov()
 #include <mysql.h>
 
 #include <limits.h>
@@ -120,62 +120,62 @@ static size_t writedata(void *ptr, size_t size, size_t nmemb, void *stream)
 }
 
 /**
- * @param initid	Points to a structure that the init function should fill.
- *		This argument is given to all other functions.
- *		my_bool maybe_null	1 if function can return NULL
- *				Default value is 1 if any of the arguments
- *				is declared maybe_null.
- *		unsigned int decimals	Number of decimals.
- *				Default value is max decimals in any of the
- *				arguments.
- *		unsigned int max_length  Length of string result.
- *				The default value for integer functions is 21
- *				The default value for real functions is 13+
- *				default number of decimals.
- *				The default value for string functions is
- *				the longest string argument.
- *		char *ptr;		A pointer that the function can use.
+ * @param initid    Points to a structure that the init function should fill.
+ *        This argument is given to all other functions.
+ *        my_bool maybe_null    1 if function can return NULL
+ *                Default value is 1 if any of the arguments
+ *                is declared maybe_null.
+ *        unsigned int decimals    Number of decimals.
+ *                Default value is max decimals in any of the
+ *                arguments.
+ *        unsigned int max_length  Length of string result.
+ *                The default value for integer functions is 21
+ *                The default value for real functions is 13+
+ *                default number of decimals.
+ *                The default value for string functions is
+ *                the longest string argument.
+ *        char *ptr;        A pointer that the function can use.
  *
- * @param args		Points to a structure which contains:
- *		unsigned int arg_count		Number of arguments
- *		enum Item_result *arg_type	Types for each argument.
- *					Types are STRING_RESULT, REAL_RESULT
- *					and INT_RESULT.
- *		char **args			Pointer to constant arguments.
- *					Contains 0 for not constant argument.
- *		unsigned long *lengths;		max string length for each argument
- *		char *maybe_null		Information of which arguments
- *					may be NULL
+ * @param args        Points to a structure which contains:
+ *        unsigned int arg_count        Number of arguments
+ *        enum Item_result *arg_type    Types for each argument.
+ *                    Types are STRING_RESULT, REAL_RESULT
+ *                    and INT_RESULT.
+ *        char **args            Pointer to constant arguments.
+ *                    Contains 0 for not constant argument.
+ *        unsigned long *lengths;        max string length for each argument
+ *        char *maybe_null        Information of which arguments
+ *                    may be NULL
  *
- * @param message	Error message that should be passed to the user on fail.
- *		The message buffer is MYSQL_ERRMSG_SIZE big, but one should
- *		try to keep the error message less than 80 bytes long!
+ * @param message    Error message that should be passed to the user on fail.
+ *        The message buffer is MYSQL_ERRMSG_SIZE big, but one should
+ *        try to keep the error message less than 80 bytes long!
  *
  * This function should return 1 if something goes wrong. In this case
  * message should contain something usefull!
  */
 my_bool curl_fetch_init(UDF_INIT *initid, UDF_ARGS *args, char *message)
 {
-	int i;
+    int i;
     struct thr_ctx *ctx = thr_ctx();
     initid->ptr = (void*)ctx;
 
-	if (args->arg_count < 1) {
-		strncpy(message, "curl_fetch requires at least one argument",
-			    MYSQL_ERRMSG_SIZE);
-		return 1;	
-	} else if (args->arg_count > 3) {
-		strncpy(message, "curl_fetch requires at most three argument",
-				MYSQL_ERRMSG_SIZE);
-		return 1;	
+    if (args->arg_count < 1) {
+        strncpy(message, "curl_fetch requires at least one argument",
+                MYSQL_ERRMSG_SIZE);
+        return 1;    
+    } else if (args->arg_count > 3) {
+        strncpy(message, "curl_fetch requires at most three argument",
+                MYSQL_ERRMSG_SIZE);
+        return 1;    
     }
 
-	for (i = 0; i < args->arg_count; i++) {
-		args->arg_type[i] = STRING_RESULT;
-		args->maybe_null[i] = 0;
-	}
+    for (i = 0; i < args->arg_count; i++) {
+        args->arg_type[i] = STRING_RESULT;
+        args->maybe_null[i] = 0;
+    }
 
-	initid->max_length = UINT_MAX;
+    initid->max_length = UINT_MAX;
 
     {
         const char *method = "get";
@@ -208,13 +208,13 @@ my_bool curl_fetch_init(UDF_INIT *initid, UDF_ARGS *args, char *message)
     curl_easy_setopt(ctx->curl, CURLOPT_WRITEFUNCTION, writedata);
     curl_easy_setopt(ctx->curl, CURLOPT_READFUNCTION, readdata);
 
-	return 0;
+    return 0;
 }
 
 /**
  * Deinit function. This should free all resources allocated by
  * this function.
- * @param initid	Return value from xxxx_init
+ * @param initid    Return value from xxxx_init
  */
 void curl_fetch_deinit(UDF_INIT *initid)
 {
@@ -224,7 +224,7 @@ void curl_fetch_deinit(UDF_INIT *initid)
  * URL fetch function.
  * @param initid  Structure filled by xxx_init
  * @param args    The same structure as to xxx_init. This structure
- *	              contains values for all parameters.
+ *                  contains values for all parameters.
  *
  *                Note that the functions MUST check and convert all
  *                to the type it wants!  Null values are represented by
@@ -239,7 +239,7 @@ void curl_fetch_deinit(UDF_INIT *initid)
  *         Normally this is 'result' but may also be an alloced string.
  */
 char *curl_fetch(UDF_INIT *initid, UDF_ARGS *args, char *result,
-		unsigned long *length, char *is_null, char *error)
+        unsigned long *length, char *is_null, char *error)
 {
     struct thr_ctx *ctx = (struct thr_ctx *)initid->ptr;
     CURLcode status;
@@ -267,40 +267,40 @@ char *curl_fetch(UDF_INIT *initid, UDF_ARGS *args, char *result,
     }
 
     *length = wctx.buf_len;
-	return wctx.buf;
+    return wctx.buf;
 }
 
 /**
- * @param initid	Points to a structure that the init function should fill.
- *		This argument is given to all other functions.
- *		my_bool maybe_null	1 if function can return NULL
- *				Default value is 1 if any of the arguments
- *				is declared maybe_null.
- *		unsigned int decimals	Number of decimals.
- *				Default value is max decimals in any of the
- *				arguments.
- *		unsigned int max_length  Length of string result.
- *				The default value for integer functions is 21
- *				The default value for real functions is 13+
- *				default number of decimals.
- *				The default value for string functions is
- *				the longest string argument.
- *		char *ptr;		A pointer that the function can use.
+ * @param initid    Points to a structure that the init function should fill.
+ *        This argument is given to all other functions.
+ *        my_bool maybe_null    1 if function can return NULL
+ *                Default value is 1 if any of the arguments
+ *                is declared maybe_null.
+ *        unsigned int decimals    Number of decimals.
+ *                Default value is max decimals in any of the
+ *                arguments.
+ *        unsigned int max_length  Length of string result.
+ *                The default value for integer functions is 21
+ *                The default value for real functions is 13+
+ *                default number of decimals.
+ *                The default value for string functions is
+ *                the longest string argument.
+ *        char *ptr;        A pointer that the function can use.
  *
- * @param args		Points to a structure which contains:
- *		unsigned int arg_count		Number of arguments
- *		enum Item_result *arg_type	Types for each argument.
- *					Types are STRING_RESULT, REAL_RESULT
- *					and INT_RESULT.
- *		char **args			Pointer to constant arguments.
- *					Contains 0 for not constant argument.
- *		unsigned long *lengths;		max string length for each argument
- *		char *maybe_null		Information of which arguments
- *					may be NULL
+ * @param args        Points to a structure which contains:
+ *        unsigned int arg_count        Number of arguments
+ *        enum Item_result *arg_type    Types for each argument.
+ *                    Types are STRING_RESULT, REAL_RESULT
+ *                    and INT_RESULT.
+ *        char **args            Pointer to constant arguments.
+ *                    Contains 0 for not constant argument.
+ *        unsigned long *lengths;        max string length for each argument
+ *        char *maybe_null        Information of which arguments
+ *                    may be NULL
  *
- * @param message	Error message that should be passed to the user on fail.
- *		The message buffer is MYSQL_ERRMSG_SIZE big, but one should
- *		try to keep the error message less than 80 bytes long!
+ * @param message    Error message that should be passed to the user on fail.
+ *        The message buffer is MYSQL_ERRMSG_SIZE big, but one should
+ *        try to keep the error message less than 80 bytes long!
  *
  * This function should return 1 if something goes wrong. In this case
  * message should contain something usefull!
@@ -311,23 +311,23 @@ my_bool curl_esc_init(UDF_INIT *initid, UDF_ARGS *args, char *message)
 
     initid->ptr = (void *)thr_ctx();
 
-	if (args->arg_count != 1) {
-		strncpy(message, "curl_fetch requires exactly one argument",
-			    MYSQL_ERRMSG_SIZE);
-		return 1;
+    if (args->arg_count != 1) {
+        strncpy(message, "curl_fetch requires exactly one argument",
+                MYSQL_ERRMSG_SIZE);
+        return 1;
     }
 
     args->arg_type[0] = STRING_RESULT;
     args->maybe_null[0] = 0;
 
-	initid->max_length = UINT_MAX;
-	return 0;
+    initid->max_length = UINT_MAX;
+    return 0;
 }
 
 /**
  * Deinit function. This should free all resources allocated by
  * this function.
- * @param initid	Return value from xxxx_init
+ * @param initid    Return value from xxxx_init
  */
 void curl_esc_deinit(UDF_INIT *initid)
 {
@@ -337,7 +337,7 @@ void curl_esc_deinit(UDF_INIT *initid)
  * URL escape function.
  * @param initid  Structure filled by xxx_init
  * @param args    The same structure as to xxx_init. This structure
- *	              contains values for all parameters.
+ *                  contains values for all parameters.
  *
  *                Note that the functions MUST check and convert all
  *                to the type it wants!  Null values are represented by
@@ -352,7 +352,7 @@ void curl_esc_deinit(UDF_INIT *initid)
  *         Normally this is 'result' but may also be an alloced string.
  */
 char *curl_esc(UDF_INIT *initid, UDF_ARGS *args, char *result,
-		unsigned long *length, char *is_null, char *error)
+        unsigned long *length, char *is_null, char *error)
 {
     char *_result = curl_easy_escape(((struct thr_ctx *)initid->ptr)->curl,
             args->args[0], args->lengths[0]);
@@ -374,7 +374,7 @@ char *curl_esc(UDF_INIT *initid, UDF_ARGS *args, char *result,
     }
     memcpy(result, _result, _result_len);
     *length = _result_len;
-	return result;
+    return result;
 }
 
 #ifdef __cplusplus
